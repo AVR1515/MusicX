@@ -1,0 +1,18 @@
+MUSICX PARA XAMPP
+
+1. Extrae el ZIP dentro de C:\xampp\htdocs. Debe quedar la carpeta MusicX.
+2. Inicia Apache y MySQL en el panel de XAMPP.
+3. Abre http://localhost/phpmyadmin e importa MusicX/schema.sql.
+4. Abre http://localhost/MusicX/ y pulsa Importar canción.
+
+La configuración usa MySQL en 127.0.0.1 y el usuario root sin contraseña,
+como en una instalación local típica de XAMPP. Si configuraste otra clave,
+edita la conexión PDO al comienzo de index.php.
+
+Los datos y favoritos se guardan en MySQL. Los archivos originales se guardan
+en MusicX/storage. Para respaldar tu biblioteca, copia esa carpeta y exporta
+la base de datos musicx. La cola dura mientras la página permanezca abierta.
+
+Para importar archivos grandes, configura upload_max_filesize = 50M y
+post_max_size = 55M en C:\xampp\php\php.ini y reinicia Apache.
+Esta versión está pensada para localhost y no incluye cuentas de usuario.
