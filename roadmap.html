@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MusicX · Roadmap</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#111018;color:#f5f2ff;font:17px system-ui}main{max-width:800px;margin:auto;padding:56px 22px}h1{font-size:clamp(3rem,10vw,6rem);margin:0;line-height:1}p{line-height:1.55;color:#d0c9df}strong,small{color:#c9adff}section{background:#211c30;border:1px solid #453858;border-radius:18px;padding:20px;margin:16px 0}summary{cursor:pointer;font-weight:700}label{display:flex;gap:12px;margin:12px 0}input{accent-color:#b58afa}progress{width:100%;accent-color:#b58afa}a{color:#c9adff}
+</style>
+<main>
+<small>PLAN DE DESARROLLO</small>
+<h1>MusicX</h1>
+<p>Tu biblioteca local y música independiente en un solo reproductor. Abre cada fase y marca las tareas terminadas.</p>
+<p id="status" aria-live="polite"></p><progress aria-label="Progreso del roadmap"></progress>
+<section><details open><summary>01 · Validar el catálogo</summary>
+<label><input type="checkbox" id="catalog">Probar canciones imprescindibles en Audius y medir cuántas se reproducen completas.</label>
+<label><input type="checkbox" id="limits">Confirmar cuotas, permisos de reproducción y disponibilidad en tus dispositivos.</label>
+</details></section>
+<section><details><summary>02 · Reproductor y biblioteca</summary>
+<label><input type="checkbox" id="ui">Crear interfaz adaptable con CSS propio y dependencias gratuitas locales.</label>
+<label><input type="checkbox" id="play">Integrar búsqueda, reproducción completa desde Audius y archivos locales.</label>
+<label><input type="checkbox" id="queue">Añadir cola, aleatorio, repetición, favoritos, historial y playlists.</label>
+<label><input type="checkbox" id="media">Probar controles del sistema y reproducción con pantalla bloqueada.</label>
+</details></section>
+<section><details><summary>03 · Importar música</summary>
+<label><input type="checkbox" id="youtube">Pegar enlace de YouTube, buscar una versión reproducible y confirmar la coincidencia.</label>
+<label><input type="checkbox" id="convert">Extraer audio de videos locales autorizados y conservar la pista original cuando sea compatible.</label>
+<label><input type="checkbox" id="offline">Habilitar reproducción sin conexión para archivos locales y pistas con permiso de descarga.</label>
+<p>Si falta una coincidencia, guardar el enlace para abrirlo en YouTube. <a href="https://developers.google.com/youtube/terms/developer-policies?hl=es">Política de YouTube</a></p>
+</details></section>
+<section><details><summary>04 · Descubrimiento y sincronización</summary>
+<label><input type="checkbox" id="discover">Añadir radio, recomendaciones, novedades, artistas y álbumes.</label>
+<label><input type="checkbox" id="sync">Sincronizar biblioteca, estado del reproductor y playlists entre dispositivos.</label>
+<label><input type="checkbox" id="social">Añadir perfiles, listas compartidas y colaborativas y sesiones grupales.</label>
+<label><input type="checkbox" id="advanced">Evaluar letras licenciadas, fundido, normalización, reproducción sin pausas y resumen anual.</label>
+</details></section>
+<section><details><summary>05 · Publicar y mantener</summary>
+<label><input type="checkbox" id="qa">Probar teclado, móvil, conexiones lentas y errores de las fuentes.</label>
+<label><input type="checkbox" id="ship">Publicar instrucciones, revisar permisos y medir cobertura y costos de operación.</label>
+</details></section>
+</main>
+<script>
+const tasks = [...document.querySelectorAll('input')];
+const progress = document.querySelector('progress');
+const status = document.querySelector('#status');
+const key = 'musicx-roadmap-v1';
+let saved = [];
+try { saved = JSON.parse(localStorage.getItem(key) || '[]'); } catch {}
+function update() {
+  const done = tasks.filter(task => task.checked).map(task => task.id);
+  progress.max = tasks.length;
+  progress.value = done.length;
+  status.textContent = `${done.length} de ${tasks.length} tareas completadas`;
+  try { localStorage.setItem(key, JSON.stringify(done)); } catch {
+    status.textContent += ' · El navegador no permite guardar el progreso';
+  }
+}
+for (const task of tasks) {
+  task.checked = Array.isArray(saved) && saved.includes(task.id);
+  task.addEventListener('change', update);
+}
+update();
+</script>
+</html>
