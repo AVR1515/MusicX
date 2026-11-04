@@ -76,6 +76,11 @@ function rows(container, list, isQueue = false) {
             queue.push(track);
             get('notice').textContent = 'Añadida a la cola: ' + track.title;
         }));
+        if (track.remote && !isQueue) {
+            const download = control(track.downloadable ? "Guardar sin conexión" : "Audius no ofrece descarga para esta pista", "↓", () => saveOffline(track, download));
+            download.disabled = !track.downloadable;
+            actions.append(download);
+        }
         if (!track.remote && !isQueue) {
             const isFavorite = Boolean(Number(track.favorite));
             const heart = control(isFavorite ? 'Quitar favorito' : 'Guardar favorito', isFavorite ? '♥' : '♡', () => favorite(track, heart));
@@ -145,7 +150,7 @@ get('search').onsubmit = async event => {
         const {data} = await response.json();
         if (search !== request) return;
         const list = data.filter(track => track.id && track.is_streamable !== false)
-            .map(track => ({id:track.id, title:track.title, artist:track.user?.name, remote:true}));
+            .map(track => ({id:track.id, title:track.title, artist:track.user?.name, remote:true, downloadable:track.is_downloadable === true || track.downloadable === true}));
         rows(get('results'), list);
         get('search-status').textContent = list.length ? list.length + ' resultados' : 'Sin coincidencias.';
     } catch (error) {
@@ -247,4 +252,41 @@ for (const [index, track] of demos.entries()) {
     icon.setAttribute('aria-hidden', 'true');
     card.append(icon, title, subtitle);
     get('demo-grid').append(card);
+}
+
+
+async function saveOffline(track, button) {
+    const status = get('search-status');
+    button.disabled = true;
+    status.textContent = 'Guardando ' + track.title + '…';
+    try {
+        const response = await fetch(api + '/tracks/' + encodeURIComponent(track.id) + '/download?app_name=MusicX');
+        if (!response.ok) throw new Error('Audius no autorizó la descarga o el archivo ya no está disponible.');
+        const audioFile = await response.blob();
+        const extensions = {
+            'audio/mpeg':'mp3', 'audio/mp3':'mp3', 'audio/wav':'wav', 'audio/x-wav':'wav',
+            'audio/flac':'flac', 'audio/x-flac':'flac', 'audio/ogg':'ogg',
+            'application/ogg':'ogg', 'audio/mp4':'m4a', 'audio/x-m4a':'m4a'
+        };
+        const filename = response.headers.get('Content-Disposition') || '';
+        const extension = extensions[audioFile.type] || filename.match(/\.(mp3|wav|flac|ogg|m4a)"?\s*$/i)?.[1]?.toLowerCase();
+        if (!extension || !audioFile.size) throw new Error('Audius devolvió un formato de audio incompatible.');
+        if (audioFile.size > 50 * 1024 * 1024) throw new Error('La pista supera el límite de 50 MB.');
+        const form = new FormData();
+        form.append('token', token);
+        form.append('title', track.title);
+        form.append('artist', track.artist || '');
+        form.append('song', audioFile, 'audius.' + extension);
+        const saved = await fetch('./', {method:'POST', headers:{Accept:'application/json'}, body:form});
+        if (!saved.ok) throw new Error('XAMPP no pudo guardar el archivo. Revisa el límite de carga de PHP.');
+        const localTrack = await saved.json();
+        tracks.unshift(localTrack);
+        button.textContent = '✓';
+        button.title = 'Disponible sin conexión';
+        button.setAttribute('aria-label', button.title);
+        status.textContent = 'Guardada en tu biblioteca: ' + track.title;
+    } catch (error) {
+        status.textContent = error instanceof TypeError ? 'No se pudo descargar desde Audius. Revisa la conexión e inténtalo de nuevo.' : error.message;
+        button.disabled = false;
+    }
 }
