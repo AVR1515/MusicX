@@ -69,6 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $query->execute([(int) $_POST['favorite']]);
         exit;
     }
+    $json = ($_SERVER["HTTP_ACCEPT"] ?? "") === "application/json";
     $file = $_FILES['song'] ?? [];
     $extensions = [
         'mp3'=>['audio/mpeg'], 'wav'=>['audio/wav','audio/x-wav','audio/vnd.wave'],
@@ -93,13 +94,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $title = trim($_POST['title'] ?? '') ?: pathinfo($file['name'], PATHINFO_FILENAME);
             $query = $db->prepare('INSERT INTO tracks (title, artist, filename) VALUES (?, ?, ?)');
             $query->execute([mb_substr($title, 0, 255), mb_substr(trim($_POST['artist'] ?? ''), 0, 255), $filename]);
+            if ($json) {
+                header("Content-Type: application/json; charset=utf-8");
+                echo json_encode(["id"=>$db->lastInsertId(), "title"=>mb_substr($title, 0, 255), "artist"=>mb_substr(trim($_POST["artist"] ?? ""), 0, 255), "favorite"=>0], JSON_INVALID_UTF8_SUBSTITUTE);
+                exit;
+            }
             $_SESSION['message'] = 'Canción añadida a tu biblioteca.';
         } catch (Throwable $error) {
             if (is_file($target)) unlink($target);
             $_SESSION['message'] = 'No se pudo guardar la canción.';
         }
     }
-    header('Location: ./', true, 303);
+    if ($json) {
+        http_response_code(422);
+        exit;
+    }
+    header("Location: ./", true, 303);
     exit;
 }
 $tracks = $db->query('SELECT id,title,artist,favorite FROM tracks ORDER BY id DESC')->fetchAll();
@@ -120,7 +130,7 @@ function escape(string $value): string { return htmlspecialchars($value, ENT_QUO
 <section class="hero"><div><small>TU ESPACIO MUSICAL</small><h1>En tu frecuencia.</h1><p>Tu colección, lista para sonar.</p></div><div class="vinyl" aria-hidden="true"></div></section>
 <p id="notice" role="status"><?=escape($message)?></p>
 <section id="featured"><div class="section-title"><h2>Escucha ahora</h2><small>SESIONES MUSICX · SIN CONEXIÓN</small></div><div id="demo-grid"></div></section><section id="collection"><div class="section-title"><h2 id="heading">Tu biblioteca</h2><span id="count"></span></div><div id="tracks"></div></section>
-<section id="discover" hidden><h2>Descubrir en Audius</h2><form id="search"><input id="query" required aria-label="Canción o artista" placeholder="Canción o artista"><button class="primary">Buscar</button></form><p id="search-status" role="status"></p><div id="results"></div></section>
+<section id="discover" hidden><h2>Descubrir en Audius</h2><p>↓ Guarda en tu biblioteca las pistas con descarga habilitada. ＋ añade a la cola.</p><form id="search"><input id="query" required aria-label="Canción o artista" placeholder="Canción o artista"><button class="primary">Buscar</button></form><p id="search-status" role="status"></p><div id="results"></div></section>
 </main>
 <dialog id="upload"><form method="post" enctype="multipart/form-data">
 <h2>Importar canción</h2><p>MP3, WAV, FLAC, OGG o M4A.</p>
@@ -132,8 +142,9 @@ function escape(string $value): string { return htmlspecialchars($value, ENT_QUO
 </form></dialog>
 <dialog id="metadata"><h2>Ficha musical</h2><p id="metadata-status" role="status"></p><div id="metadata-results"></div><form method="dialog"><button>Cerrar</button></form></dialog><footer><div class="now"><span id="now-art" aria-hidden="true">♫</span><div><b id="playing">Sin reproducción</b><small id="artist">MusicX</small></div></div><audio id="audio" preload="metadata"></audio><div class="transport"><div class="actions"><button id="previous" aria-label="Anterior">⏮</button><button id="toggle" aria-label="Reproducir" disabled>▶</button></div><div class="timeline"><span id="elapsed">0:00</span><input id="seek" type="range" min="0" max="1000" value="0" aria-label="Posición de reproducción" disabled><span id="duration">0:00</span></div></div><div class="actions"><button id="shuffle" aria-pressed="false" aria-label="Aleatorio">⤨</button><button id="repeat" aria-pressed="false" aria-label="Repetir">↻</button><button id="next" aria-label="Siguiente">⏭</button><input id="volume" type="range" min="0" max="1" step=".01" value="1" aria-label="Volumen"></div></footer>
 <script id="data" type="application/json"><?=json_encode(['tracks'=>$tracks,'token'=>$_SESSION['token']], JSON_HEX_TAG | JSON_INVALID_UTF8_SUBSTITUTE)?></script>
-<script src="musicx.js?v=3" defer></script>
+<script src="musicx.js?v=4" defer></script>
 </body>
 </html>
+
 
 
