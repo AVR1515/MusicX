@@ -6,6 +6,8 @@ const api = 'https://api.audius.co/v1';
 const titles = {all:'Tu biblioteca', liked:'Favoritos', queue:'Cola de reproducción'};
 let view = 'all';
 let request;
+let currentTrack;
+const history = [];
 
 function control(label, symbol, action) {
     const button = document.createElement('button');
@@ -17,8 +19,12 @@ function control(label, symbol, action) {
     return button;
 }
 
-function play(track) {
-    audio.src = track.remote ? api + '/tracks/' + encodeURIComponent(track.id) + '/stream?app_name=MusicX' : '?audio=' + track.id;
+function play(track, remember = true) {
+    if (remember && currentTrack && currentTrack !== track) history.push(currentTrack);
+    currentTrack = track;
+    get("toggle").disabled = false;
+    get("now-art").style.setProperty("--hue", (track.title.charCodeAt(0) * 39) % 360);
+    audio.src = track.demo ? "demo.php?track=" + track.id : track.remote ? api + '/tracks/' + encodeURIComponent(track.id) + '/stream?app_name=MusicX' : '?audio=' + track.id;
     get('playing').textContent = track.title;
     get('artist').textContent = track.artist || (track.remote ? 'Audius' : 'Biblioteca local');
     get('notice').textContent = '';
@@ -74,7 +80,7 @@ function rows(container, list, isQueue = false) {
             const isFavorite = Boolean(Number(track.favorite));
             const heart = control(isFavorite ? 'Quitar favorito' : 'Guardar favorito', isFavorite ? '♥' : '♡', () => favorite(track, heart));
             heart.setAttribute('aria-pressed', String(isFavorite));
-            actions.append(heart);
+            actions.append(heart, control("Consultar ficha musical", "ⓘ", () => showMetadata(track)));
         }
         row.append(playButton, details, actions);
         container.append(row);
@@ -83,6 +89,7 @@ function rows(container, list, isQueue = false) {
 
 function render() {
     get('discover').hidden = view !== 'discover';
+    get('featured').hidden = view !== 'all';
     get('collection').hidden = view === 'discover';
     get('filter').disabled = view === 'discover' || view === 'queue';
     if (view === 'discover') return;
@@ -146,3 +153,98 @@ get('search').onsubmit = async event => {
     }
 };
 render();
+
+
+function clock(seconds) {
+    const value = Number.isFinite(seconds) ? Math.floor(seconds) : 0;
+    return Math.floor(value / 60) + ':' + String(value % 60).padStart(2, '0');
+}
+function syncPlayer() {
+    const playable = Number.isFinite(audio.duration) && audio.duration > 0;
+    get('seek').disabled = !playable;
+    get('seek').value = playable ? audio.currentTime / audio.duration * 1000 : 0;
+    get('elapsed').textContent = clock(audio.currentTime);
+    get('duration').textContent = clock(audio.duration);
+    get('toggle').textContent = audio.paused ? '▶' : 'Ⅱ';
+    get('toggle').setAttribute('aria-label', audio.paused ? 'Reproducir' : 'Pausar');
+}
+for (const event of ['play', 'pause', 'ended', 'timeupdate', 'durationchange', 'emptied']) {
+    audio.addEventListener(event, syncPlayer);
+}
+get('toggle').onclick = () => {
+    if (!audio.paused) audio.pause();
+    else audio.play().catch(() => { get('notice').textContent = 'Esta pista no se pudo reproducir.'; });
+};
+get('seek').oninput = event => { audio.currentTime = audio.duration * event.target.value / 1000; };
+get('volume').oninput = event => { audio.volume = Number(event.target.value); };
+get('previous').onclick = () => {
+    if (!currentTrack) return;
+    if (audio.currentTime < 3 && history.length) {
+        if (!audio.ended) queue.unshift(currentTrack);
+        play(history.pop(), false);
+        render();
+    } else if (Number.isFinite(audio.duration)) {
+        audio.currentTime = 0;
+    }
+};
+
+let metadataRequest;
+async function showMetadata(track) {
+    const dialog = get('metadata');
+    const status = get('metadata-status');
+    const results = get('metadata-results');
+    metadataRequest?.abort();
+    const request = new AbortController();
+    metadataRequest = request;
+    dialog.showModal();
+    status.textContent = 'Buscando en MusicBrainz…';
+    results.replaceChildren();
+    try {
+        const response = await fetch('metadata.php', {
+            method:'POST',
+            body:new URLSearchParams({token, title:track.title, artist:track.artist}),
+            signal:request.signal
+        });
+        if (!response.ok) throw new Error();
+        const matches = await response.json();
+        if (request !== metadataRequest) return;
+        status.textContent = matches.length ? 'Coincidencias de MusicBrainz' : 'No encontramos coincidencias.';
+        for (const match of matches) {
+            const item = document.createElement('p');
+            const link = document.createElement('a');
+            link.href = 'https://musicbrainz.org/recording/' + encodeURIComponent(match.id);
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.textContent = match.title;
+            const artist = (match['artist-credit'] || []).map(credit => credit.name + (credit.joinphrase || '')).join('');
+            const detail = [artist, match.releases?.[0]?.title, match['first-release-date']].filter(Boolean);
+            item.append(link, detail.length ? ' · ' + detail.join(' · ') : '');
+            results.append(item);
+        }
+    } catch {
+        if (request === metadataRequest && !request.signal.aborted) status.textContent = 'No se pudo consultar MusicBrainz. Intenta de nuevo.';
+    }
+}
+get('metadata').addEventListener('close', () => metadataRequest?.abort());
+
+
+const demos = [
+    {id:1, title:'Neón nocturno', artist:'MusicX · Arpegio', demo:true},
+    {id:2, title:'Órbita lenta', artist:'MusicX · Downtempo', demo:true},
+    {id:3, title:'Luz de tránsito', artist:'MusicX · Electrónica', demo:true}
+];
+for (const [index, track] of demos.entries()) {
+    const card = control('Escuchar ' + track.title, '', () => play(track));
+    card.className = 'demo-card';
+    card.style.setProperty('--hue', [275, 190, 24][index]);
+    const title = document.createElement('strong');
+    title.textContent = track.title;
+    const subtitle = document.createElement('small');
+    subtitle.textContent = track.artist;
+    const icon = document.createElement('span');
+    icon.className = 'demo-play';
+    icon.textContent = '▶';
+    icon.setAttribute('aria-hidden', 'true');
+    card.append(icon, title, subtitle);
+    get('demo-grid').append(card);
+}
