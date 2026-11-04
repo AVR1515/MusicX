@@ -112,14 +112,14 @@ function escape(string $value): string { return htmlspecialchars($value, ENT_QUO
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>MusicX | Tu música</title>
-<link rel="stylesheet" href="musicx.css">
+<link rel="stylesheet" href="musicx.css?v=3">
 <body>
 <aside><a class="brand" href="./"><i>♫</i> MusicX</a><small>COLECCIÓN</small><button data-view="all" aria-pressed="true">▤ &nbsp; Biblioteca</button><button data-view="liked" aria-pressed="false">♡ &nbsp; Favoritos</button><button data-view="queue" aria-pressed="false">≡ &nbsp; Cola</button><button data-view="discover" aria-pressed="false">⌕ &nbsp; Descubrir</button><a class="roadmap" href="roadmap.html">Roadmap ↗</a></aside>
 <main>
 <header><input id="filter" type="search" placeholder="Buscar en tu biblioteca" aria-label="Buscar en tu biblioteca"><button id="import" class="primary">＋ Importar canción</button></header>
 <section class="hero"><div><small>TU ESPACIO MUSICAL</small><h1>En tu frecuencia.</h1><p>Tu colección, lista para sonar.</p></div><div class="vinyl" aria-hidden="true"></div></section>
 <p id="notice" role="status"><?=escape($message)?></p>
-<section id="collection"><div class="section-title"><h2 id="heading">Tu biblioteca</h2><span id="count"></span></div><div id="tracks"></div></section>
+<section id="featured"><div class="section-title"><h2>Escucha ahora</h2><small>SESIONES MUSICX · SIN CONEXIÓN</small></div><div id="demo-grid"></div></section><section id="collection"><div class="section-title"><h2 id="heading">Tu biblioteca</h2><span id="count"></span></div><div id="tracks"></div></section>
 <section id="discover" hidden><h2>Descubrir en Audius</h2><form id="search"><input id="query" required aria-label="Canción o artista" placeholder="Canción o artista"><button class="primary">Buscar</button></form><p id="search-status" role="status"></p><div id="results"></div></section>
 </main>
 <dialog id="upload"><form method="post" enctype="multipart/form-data">
@@ -130,8 +130,10 @@ function escape(string $value): string { return htmlspecialchars($value, ENT_QUO
 <label>Artista<input name="artist" maxlength="255" placeholder="Opcional"></label>
 <div class="actions"><button type="button" id="cancel">Cancelar</button><button class="primary">Guardar canción</button></div>
 </form></dialog>
-<footer><div><b id="playing">Sin reproducción</b><small id="artist">MusicX</small></div><audio id="audio" controls preload="none"></audio><div class="actions"><button id="shuffle" aria-pressed="false" aria-label="Aleatorio">⤨</button><button id="repeat" aria-pressed="false" aria-label="Repetir">↻</button><button id="next" aria-label="Siguiente">▶▏</button></div></footer>
+<dialog id="metadata"><h2>Ficha musical</h2><p id="metadata-status" role="status"></p><div id="metadata-results"></div><form method="dialog"><button>Cerrar</button></form></dialog><footer><div class="now"><span id="now-art" aria-hidden="true">♫</span><div><b id="playing">Sin reproducción</b><small id="artist">MusicX</small></div></div><audio id="audio" preload="metadata"></audio><div class="transport"><div class="actions"><button id="previous" aria-label="Anterior">⏮</button><button id="toggle" aria-label="Reproducir" disabled>▶</button></div><div class="timeline"><span id="elapsed">0:00</span><input id="seek" type="range" min="0" max="1000" value="0" aria-label="Posición de reproducción" disabled><span id="duration">0:00</span></div></div><div class="actions"><button id="shuffle" aria-pressed="false" aria-label="Aleatorio">⤨</button><button id="repeat" aria-pressed="false" aria-label="Repetir">↻</button><button id="next" aria-label="Siguiente">⏭</button><input id="volume" type="range" min="0" max="1" step=".01" value="1" aria-label="Volumen"></div></footer>
 <script id="data" type="application/json"><?=json_encode(['tracks'=>$tracks,'token'=>$_SESSION['token']], JSON_HEX_TAG | JSON_INVALID_UTF8_SUBSTITUTE)?></script>
-<script src="musicx.js" defer></script>
+<script src="musicx.js?v=3" defer></script>
 </body>
 </html>
+
+
